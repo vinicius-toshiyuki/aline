@@ -4,15 +4,15 @@ Align tables.
 
 Use the Aline command to align tables like this:
 
-col1;col2  ;col3;col4
-col1 ; col2;col3;col4;
+col1;col2  ;col3;col4<br>
+col1 ; col2;col3;col4;<br>
 col1;col2;col3;col4;;
 
 to become like this:
 
-col1  ; col2   ; col3 ; col4
-col1  ;  col2  ; col3 ; col4 ;
-col1  ; col2   ; col3 ; col4 ;  ;
+col1  ; col2   ; col3 ; col4<br>
+col1  ;  col2  ; col3 ; col4 ;<br>
+col1  ; col2   ; col3 ; col4 ;  ;<br>
 
 (OMG!)
 
@@ -20,7 +20,7 @@ col1  ; col2   ; col3 ; col4 ;  ;
 
 * No dependencies, written in vimscript
 * Format using any separator
-* Works with 1+ byte chars
+* Works with +1 byte chars
 
 # Installation
 
@@ -29,10 +29,11 @@ Add this to yout .vimrc
 
 				call plug#begin()
 				...
-				Plug 'vinicius-toshiyuki/aline'
+				Plug 'vinicius-toshiyuki/aline.git'
 				...
 				call plug#end()
 and run
+
 				:PlugInstall
 after reopening Vim (or sourcing .vimrc again).
 
@@ -44,6 +45,7 @@ after reopening Vim (or sourcing .vimrc again).
 Only one command, chap, ain't much to document. ツ
 
 Just type 
+
 				:Aline <sep>
 in normal mode with the cursor inside the block of text to be formatted, where \<sep\> is the separator (can be more than one character).
 
