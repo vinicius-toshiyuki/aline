@@ -25,11 +25,11 @@ function! s:aline(sep) abort
 	" Format lines
 	for l:i in range(l:ccount)
 		" Get the length of the l:i'th column
-		let l:clen = map(copy(l:lines), 'len(v:val) > l:i ? strwidth(v:val[l:i]) : 0')->max()
+		let l:clen = map(copy(l:lines), 'len(v:val) > l:i ? strdisplaywidth(v:val[l:i]) : 0')->max()
 		" Format the l:i'th column of each line
 		for l:line in l:lines
-			if len(l:line) > l:i && strwidth(l:line[l:i]) < l:clen
-				let l:line[l:i] .= repeat(' ', l:clen - strwidth(l:line[l:i]))
+			if len(l:line) > l:i && strdisplaywidth(l:line[l:i]) < l:clen
+				let l:line[l:i] .= repeat(' ', l:clen - strdisplaywidth(l:line[l:i]))
 			endif
 		endfor
 	endfor
