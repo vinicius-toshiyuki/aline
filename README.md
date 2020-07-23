@@ -37,22 +37,18 @@ and run
 				:PlugInstall
 after reopening Vim (or sourcing .vimrc again).
 
-## Usage
-
-
 ## Documentation
-
-Only one command, chap, ain't much to document. ツ
 
 Just type 
 
-				:Aline <sep>
-in normal mode with the cursor inside the block of text to be formatted, where \<sep\> is the separator (can be more than one character).
+				:Aline <sep> [<align>]
+in normal mode with the cursor inside the block of text to be formatted, where \<sep\> is the separator (can be more than one character) and \<align\> is '-' for left, '=' center (default) or '+' for right alignment.
 
 ### TODO
 
-* Format the entire file
 * Doc
+* Load code based on features (has textprop etc.)
+* E685 Internal error
 
 # License
 
