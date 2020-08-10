@@ -1,10 +1,29 @@
-" Ids and separators of formatted texts
-" Entries are in the format (<aline_text text property id>, <separator>)
-let s:prop_ids = {}
+" Select python3 function over vimscript only (if available)
+let g:aline#use_python3 = v:false
+
+" Text block maximum byte length to keep updating
+" Negative values interpreted as unlimited
+let g:aline#max_line_count = 100
+
+" Default separators padding
+let g:aline#separator_padding = 0
+
+" Default text alignment
+" '-': left, '+': right, '=': center
+let g:aline#default_alignment = '-'
 
 function! s:aline(range, line1, line2, sep, ...) abort
 	" Get alignment
-	let l:align = get({0: 'left', '+': 'right', '=': 'center'}, get(a:, 1))
+	let l:align_short = (substitute(get(a:, 1, ''), '[^-=+]', '', 'g').g:aline#default_alignment)[0]
+	let l:align = get({'-': 'left', '+': 'right', '=': 'center'}, l:align_short, 'left')
+
+	" Get separator padding
+	let l:padding = (split(substitute(get(a:, 1, ''), '[^[:digit:]]', ' ', 'g')) + [g:aline#separator_padding])[0]
+	if l:padding < 0 | let l:padding = 1 | endif
+
+	" Get clear extra spaces option
+	let l:clear_extra = substitute(get(a:, 1, ''), '[^c]', '', 'g')[0]
+	let l:clear_extra = l:clear_extra == 'c' ? 1 : 0
 
 	" Get a regex-friendly separator
 	let l:rsep = escape(a:sep, '\^$.*~[]')
@@ -13,9 +32,6 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	if getline('.') !~ l:rsep
 		return 0
 	endif
-
-	" Save current view
-	let l:view = winsaveview()
 
 	" Search for line boundaries
 	if a:range > 0
@@ -27,8 +43,33 @@ function! s:aline(range, line1, line2, sep, ...) abort
 		if l:le <= 0 | let l:le = line('$') | endif
 	endif
 
+	" Save current view
+	let l:view = winsaveview()
+
+	let l:Aline_engine = function(
+				\ has('python3') && g:aline#use_python3 ?
+				\ 's:python3' :
+				\ 's:vim'
+				\)
+	call l:Aline_engine(l:ls, l:le, a:sep, #{align: l:align, clear_extra: l:clear_extra, padding: l:padding})
+
+	" Add property
+	let l:prop = aline#properties#get(line('.'))
+	let l:id = len(l:prop) > 0 ? l:prop[0].id : len(g:aline#properties)
+	call aline#properties#add(l:id, l:ls, l:le, a:sep, {'align': l:align_short})
+
+	" Restore original view
+	call winrestview(l:view)
+	return 1
+endfunction 
+command! -range -bar -nargs=+ Aline :call s:aline(<range>, <line1>, <line2>, <f-args>)
+
+function s:vim(ls, le, sep, options) abort
+	" Get a regex-friendly separator
+	let l:rsep = escape(a:sep, '\^$.*~[]')
+
 	" Get lines and split with the separator
-	let l:lines = map(getline(l:ls, l:le), 'split(v:val, l:rsep, 1)')
+	let l:lines = map(getline(a:ls, a:le), 'split(a:options.clear_extra ? substitute(v:val, ''\(\s\)\s\+\|\s*\('.l:rsep.'\)\s*'', "\\1\\2", "g") : v:val, l:rsep, 1)')
 
 	" Get the column count
 	let l:ccount = map(copy(l:lines), 'len(v:val)')->max()
@@ -36,17 +77,26 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	" Format lines
 	for l:i in range(l:ccount)
 		" Get the length of the l:i'th column
-		let l:clen = map(copy(l:lines), 'len(v:val) > l:i ? strdisplaywidth(v:val[l:i]) : 0')->max()
+		let l:clen = map(
+					\ copy(l:lines),
+					\ 'len(v:val) > l:i ?
+					\ strdisplaywidth(
+					\ 	substitute(
+					\ 		v:val[l:i],
+					\ 		"^\\s\\*\\([^\\s]*\\)\\s\\*$",
+					\ 		"\\1", ""
+					\ 	)
+					\ ) : 0')->max()
 		" Format the l:i'th column of each line
 		for l:line in l:lines
 			if len(l:line) > l:i
 				let l:line[l:i] = substitute(substitute(l:line[l:i], '^\s\+', '', ""), '\s\+$', '', "")
 				if strdisplaywidth(l:line[l:i]) < l:clen
-					if l:align == 'left'
+					if a:options.align == 'left'
 						let l:line[l:i] .= repeat(' ', l:clen - strdisplaywidth(l:line[l:i]))
-					elseif l:align == 'right'
+					elseif a:options.align == 'right'
 						let l:line[l:i] = repeat(' ', l:clen - strdisplaywidth(l:line[l:i])).l:line[l:i]
-					elseif l:align == 'center'
+					elseif a:options.align == 'center'
 						let l:lpad = l:clen - strdisplaywidth(l:line[l:i])
 						let l:rpad = l:lpad / 2
 						let l:lpad -= l:rpad
@@ -57,88 +107,62 @@ function! s:aline(range, line1, line2, sep, ...) abort
 		endfor
 	endfor
 
-	" Get past property
-	let l:prop = prop_list(l:ls, {'type': 'aline_text'})
-
 	" Join columns of a line in a string
-	let l:lines = map(l:lines, 'join(v:val, "'.escape(a:sep, '\').'")')
+	let l:lines = map(
+				\ l:lines,
+				\ 'join(v:val, "'.
+				\ repeat(' ', a:options.padding).
+				\ escape(a:sep, '\').
+				\ repeat(' ', a:options.padding).
+				\ '")'
+				\)
 	" Replace lines with formatted lines
 	call setreg('"=', l:lines)
-	execute 'silent! normal! '.l:ls.'GV'.l:le.'Gp'
+	execute 'silent! normal! '.a:ls.'GV'.a:le.'Gp'
 	" Remove extra spaces in the end of the line (added to keep separators in
 	" the end of the line)
-	execute 'silent! '.l:ls.','.l:le.'substitute/\s\+$//'
-
-	" Add property
-	let l:id = len(l:prop) > 0 ? l:prop[0]['id'] : len(s:prop_ids)
-	call prop_add(
-		\ l:ls,
-		\ 1,
-		\ {
-		\ 'id': l:id,
-		\ 'end_lnum': l:le,
-		\ 'end_col': strlen(getline(l:le)),
-		\ 'type': 'aline_text'
-		\ })
-	let s:prop_ids[l:id] = {'sep': a:sep, 'align': get(a:, 1)}
-
-	" Restore original view
-	call winrestview(l:view)
-	return 1
-endfunction 
-command! -range -bar -nargs=+ Aline :call s:aline(<range>, <line1>, <line2>, <f-args>)
-
-" Text property to keep track of previously formatted text
-if prop_type_list()->index('aline_text') < 0
-	call prop_type_add('aline_text', {'start_incl': 1, 'end_incl': 1, 'combine': 1})
-endif
-
-" Time to not update the alignment after an update
-let g:aline_hold_time = 500
-" Time with no new changes needed to update the alignment
-let g:aline_update_time = 750
-
-" Control the access to the update function 
-" Updates are paused for 'g:aline_hold_time' ms
-let s:alinable = 1
-function! s:alinableControl(id) abort
-	let s:alinable = 1
+	execute 'silent! '.a:ls.','.a:le.'substitute/\s\+$//'
 endfunction
-let s:alinable_control_handler = function('s:alinableControl')
 
-" Rerun Aline to format changed text
-function! s:rerun(id) abort
-	execute 'Aline '.s:rerun_sep.'  '.s:rerun_align
-	let s:alinable = 0
-	unlet s:rerun_sep
-	unlet s:rerun_align
-	" Set up a timer to re-enable updating
-	call timer_start(g:aline_hold_time, s:alinable_control_handler)
+function s:python3(ls, le, sep, options) abort
+	execute 'py3 aline_start = '.a:ls.' - 1'
+	execute 'py3 aline_end = '.a:le
+	execute 'py3 aline_sep = "'.a:sep.'"'
+py3 << END
+import sys
+import concurrent.futures
+import datetime
+
+def align(col):
+	length = len(sorted(col, key=lambda k: len(k), reverse=True)[0])
+	col = map(lambda r: r.ljust(length), col)
+	return list(col)
+
+
+start = datetime.datetime.now()
+
+lines = vim.current.buffer[aline_start:aline_end]
+lines = list(map(lambda l: l.split(aline_sep), lines))
+columns = list(zip(*lines))
+
+with concurrent.futures.ThreadPoolExecutor() as executor:
+	threads = [executor.submit(align, col) for col in columns]
+
+results = []
+for th in threads:
+	results.append(th.result())
+
+results = list(map(lambda r: (aline_sep+' ').join(r), zip(*results)))
+
+end = datetime.datetime.now()
+
+delta = end - start
+
+print('Done in', delta.seconds + delta.microseconds / 10 ** 6)
+
+vim.current.buffer[aline_start:aline_end] = results
+
+END
+
 endfunction
-let s:rerun_handler = function('s:rerun')
-
-" Id of the timer that waits for an idle state to update
-let s:timer_id = 0
-" Callback to changed text that decides whether or not it is needed to update
-function! s:updateBlock(bufnr, start, end, added, changes) abort
-	" Exits if it is not insert mode or updating is paused
-	if mode() != 'i' || !s:alinable | return 0 | endif
-	" Check if the changes were made on an previously formatted text
-	let l:prop = prop_list(line('.'), {'bufnr': a:bufnr, 'type': 'aline_text'})
-	for l:p in l:prop
-		" Get the right separator for this block
-		let s:rerun_sep   = s:prop_ids[l:p['id']]['sep']
-		let s:rerun_align = s:prop_ids[l:p['id']]['align']
-		" Reset the timer waiting for an idle state
-		call timer_stop(s:timer_id)
-		let s:timer_id = timer_start(g:aline_update_time, s:rerun_handler)
-	endfor
-	return 1
-endfunction
-let s:update_handler = function('s:updateBlock')
-
-augroup aline
-	" Add listener to changes to keep alignment updated
-	autocmd! BufEnter teste let s:listener_id = listener_add(s:update_handler, buffer_name())
-augroup end
 
