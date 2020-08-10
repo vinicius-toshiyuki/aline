@@ -16,14 +16,14 @@ col1 ;col2  ;col3;col4;;
 
 or:
 
- col1; col2 ;col3;col4
- col1; col2 ;col3;col4;
+ col1; col2 ;col3;col4<br>
+ col1; col2 ;col3;col4;<br>
  col1; col2 ;col3;col4;;
 
 or:
 
- col1;  col2;col3;col4
- col1;  col2;col3;col4;
+ col1;  col2;col3;col4<br>
+ col1;  col2;col3;col4;<br>
  col1;  col2;col3;col4;;
 
 (OMG!)
