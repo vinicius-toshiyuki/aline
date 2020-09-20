@@ -2,6 +2,8 @@
 let g:aline#update#hold_time = 500
 " Time with no new changes needed to update the alignment
 let g:aline#update#update_time = 750
+" File extensions to activate auto update formatting
+let g:aline#update#file_types = []
 
 " Control the access to the update function 
 " Updates are paused for 'g:aline#hold_time' ms
@@ -32,7 +34,7 @@ function! s:updateBlock(bufnr, start, end, added, changes) abort
 	let l:prop = aline#properties#get()
 	for l:p in l:prop
 		let l:prop_data = g:aline#properties[l:p.id]
-		if l:prop_data.end - l:prop_data.start > g:aline#max_line_count - 1 | return 0 | endif
+		if l:p.type == 'aline_long_text' | return 0 | endif
 		" Get the right separator for this block
 		let s:rerun_sep   = l:prop_data.sep
 		let s:rerun_align = l:prop_data.align
@@ -44,7 +46,21 @@ function! s:updateBlock(bufnr, start, end, added, changes) abort
 endfunction
 let s:update_handler = function('s:updateBlock')
 
+let s:listener_id = {}
+function! s:enableUpdate() abort
+	let s:listener_id[buffer_name()] = listener_add(s:update_handler, buffer_name())
+endfunction
+command! AlineEnableUpdate :call <SID>enableUpdate()
+
+function! s:disableUpdate() abort
+	call listener_remove(s:listener_id[buffer_name()])
+	unlet s:listener_id[buffer_name()]
+endfunction
+command! AlineDisableUpdate :call <SID>disableUpdate()
+
 augroup aline
 	" Add listener to changes to keep alignment updated
-	autocmd! BufEnter teste let s:listener_id = listener_add(s:update_handler, buffer_name())
+	for l:ft in g:aline#update#file_types
+		execute 'autocmd! BufEnter *.'.l:ft.' let s:listener_id[buffer_name()] = listener_add(s:update_handler, buffer_name())'
+	endfor
 augroup end

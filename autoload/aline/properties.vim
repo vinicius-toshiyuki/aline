@@ -14,7 +14,8 @@ let g:aline#properties = {}
 function! aline#properties#get(...) abort
 	let lnum = get(a:, 1, line('.'))
 	let bufnr = get(a:, 2, bufnr())
-	return prop_list(lnum, {'bufnr': bufnr, 'type': 'aline_text'})
+	let l:props = prop_list(lnum, {'bufnr': bufnr, 'type': 'aline_text'})
+	return len(l:props) > 0 ? l:props : prop_list(lnum, {'bufnr': bufnr, 'type': 'aline_long_text'})
 endfunction
 
 function! aline#properties#add(id, start, end, sep, options) abort

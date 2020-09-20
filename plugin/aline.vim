@@ -62,7 +62,7 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	call winrestview(l:view)
 	return 1
 endfunction 
-command! -range -bar -nargs=+ Aline :call s:aline(<range>, <line1>, <line2>, <f-args>)
+command! -range -bar -nargs=+ Aline :call <SID>aline(<range>, <line1>, <line2>, <f-args>)
 
 function s:vim(ls, le, sep, options) abort
 	" Get a regex-friendly separator
@@ -71,12 +71,12 @@ function s:vim(ls, le, sep, options) abort
 	" Get lines and split with the separator
 	let l:lines = map(getline(a:ls, a:le), 'split(a:options.clear_extra ? substitute(v:val, ''\(\s\)\s\+\|\s*\('.l:rsep.'\)\s*'', "\\1\\2", "g") : v:val, l:rsep, 1)')
 
-	" Get the column count
+	" Get column count
 	let l:ccount = map(copy(l:lines), 'len(v:val)')->max()
 
 	" Format lines
 	for l:i in range(l:ccount)
-		" Get the length of the l:i'th column
+		" Get length of the l:i'th column
 		let l:clen = map(
 					\ copy(l:lines),
 					\ 'len(v:val) > l:i ?
@@ -87,7 +87,7 @@ function s:vim(ls, le, sep, options) abort
 					\ 		"\\1", ""
 					\ 	)
 					\ ) : 0')->max()
-		" Format the l:i'th column of each line
+		" Format l:i'th column of each line
 		for l:line in l:lines
 			if len(l:line) > l:i
 				let l:line[l:i] = substitute(substitute(l:line[l:i], '^\s\+', '', ""), '\s\+$', '', "")
@@ -117,8 +117,7 @@ function s:vim(ls, le, sep, options) abort
 				\ '")'
 				\)
 	" Replace lines with formatted lines
-	call setreg('"=', l:lines)
-	execute 'silent! normal! '.a:ls.'GV'.a:le.'Gp'
+	call map(l:lines, 'setline('.a:ls.' + v:key, v:val)')
 	" Remove extra spaces in the end of the line (added to keep separators in
 	" the end of the line)
 	execute 'silent! '.a:ls.','.a:le.'substitute/\s\+$//'
@@ -143,6 +142,8 @@ start = datetime.datetime.now()
 
 lines = vim.current.buffer[aline_start:aline_end]
 lines = list(map(lambda l: l.split(aline_sep), lines))
+max_len = len(max(lines, key=lambda k: len(k)))
+lines = list(map(lambda l: l + ([''] * (max_len - len(l))), lines))
 columns = list(zip(*lines))
 
 with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -152,7 +153,7 @@ results = []
 for th in threads:
 	results.append(th.result())
 
-results = list(map(lambda r: (aline_sep+' ').join(r), zip(*results)))
+results = list(map(lambda r: aline_sep.join(r), zip(*results)))
 
 end = datetime.datetime.now()
 
