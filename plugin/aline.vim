@@ -19,11 +19,11 @@ function! s:aline(range, line1, line2, sep, ...) abort
 
 	" Get separator padding
 	let l:padding = (split(substitute(get(a:, 1, ''), '[^[:digit:]]', ' ', 'g')) + [g:aline#separator_padding])[0]
-	if l:padding < 0 | let l:padding = 1 | endif
+	if l:padding < 0 | let l:padding = g:aline#separator_padding | endif
 
 	" Get clear extra spaces option
 	let l:clear_extra = substitute(get(a:, 1, ''), '[^c]', '', 'g')[0]
-	let l:clear_extra = l:clear_extra == 'c' ? 1 : 0
+	let l:clear_extra = l:clear_extra == 'c' ? v:true : v:false
 
 	" Get a regex-friendly separator
 	let l:rsep = escape(a:sep, '\^$.*~[]')
@@ -69,7 +69,7 @@ function s:vim(ls, le, sep, options) abort
 	let l:rsep = escape(a:sep, '\^$.*~[]')
 
 	" Get lines and split with the separator
-	let l:lines = map(getline(a:ls, a:le), 'split(a:options.clear_extra ? substitute(v:val, ''\(\s\)\s\+\|\s*\('.l:rsep.'\)\s*'', "\\1\\2", "g") : v:val, l:rsep, 1)')
+	let l:lines = map(getline(a:ls, a:le), 'split(a:options.clear_extra ? substitute(v:val, ''^\s\+\|\s*\('.l:rsep.'\)\s*\|\s\+$'', "\\1", "g") : v:val, l:rsep, 1)')
 
 	" Get column count
 	let l:ccount = map(copy(l:lines), 'len(v:val)')->max()
@@ -90,7 +90,7 @@ function s:vim(ls, le, sep, options) abort
 		" Format l:i'th column of each line
 		for l:line in l:lines
 			if len(l:line) > l:i
-				let l:line[l:i] = substitute(substitute(l:line[l:i], '^\s\+', '', ""), '\s\+$', '', "")
+				"let l:line[l:i] = substitute(substitute(l:line[l:i], '^\s\+', '', ""), '\s\+$', '', "")
 				if strdisplaywidth(l:line[l:i]) < l:clen
 					if a:options.align == 'left'
 						let l:line[l:i] .= repeat(' ', l:clen - strdisplaywidth(l:line[l:i]))
@@ -127,6 +127,7 @@ function s:python3(ls, le, sep, options) abort
 	execute 'py3 aline_start = '.a:ls.' - 1'
 	execute 'py3 aline_end = '.a:le
 	execute 'py3 aline_sep = "'.a:sep.'"'
+	execute 'py3 aline_opt = vim.eval("'.string(a:options)->escape('"').'")'
 py3 << END
 import sys
 import concurrent.futures
@@ -134,14 +135,19 @@ import datetime
 
 def align(col):
 	length = len(sorted(col, key=lambda k: len(k), reverse=True)[0])
-	col = map(lambda r: r.ljust(length), col)
+	align_lambda = {
+		'left' : lambda r: r.ljust(length),
+		'right' : lambda r: r.rjust(length),
+		'center' : lambda r: r.ljust(length // 2).rjust(length // 2 + length % 2)
+	}
+	col = map(align_lambda[aline_opt['align']], col)
 	return list(col)
 
 
 start = datetime.datetime.now()
 
 lines = vim.current.buffer[aline_start:aline_end]
-lines = list(map(lambda l: l.split(aline_sep), lines))
+lines = list(map(lambda l: l.split(aline_sep).strip(None if aline_opt['clear_extra'] else ''), lines))
 max_len = len(max(lines, key=lambda k: len(k)))
 lines = list(map(lambda l: l + ([''] * (max_len - len(l))), lines))
 columns = list(zip(*lines))
@@ -153,7 +159,8 @@ results = []
 for th in threads:
 	results.append(th.result())
 
-results = list(map(lambda r: aline_sep.join(r), zip(*results)))
+padding = ' ' * aline_opt['padding']
+results = list(map(lambda r: (padding + aline_sep + padding).join(r).rstrip(), zip(*results)))
 
 end = datetime.datetime.now()
 
