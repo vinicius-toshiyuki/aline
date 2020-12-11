@@ -1,97 +1,93 @@
 # Aline
 
-Align tables.
+Align text with a single simple command.
 
-Use the Aline command to align tables like this:
+Aline is an alternative to [Tabular](https://github.com/godlygeek/tabular), but with simpler commands.
 
-				col1;col2  ;col3;col4<br>
-				col1 ; col2;col3;col4;<br>
-				col1;col2;col3;col4;;
+Let Aline find where to start and end aligning
 
-to become like this:
+![fullAline](./assets/fullAline.gif)
 
-				col1 ;col2  ;col3;col4<br>
-				col1 ;col2  ;col3;col4;<br>
-				col1 ;col2  ;col3;col4;;
+Or specify the range yourself
 
-or:
+![partialAline](./assets/partialAline.gif)
 
-				col1; col2 ;col3;col4<br>
-				col1; col2 ;col3;col4;<br>
-				col1; col2 ;col3;col4;;
+Different alignments are supported
 
-or:
+![alignmentsAline](./assets/alignmentsAline.gif)
 
-				col1;  col2;col3;col4<br>
-				col1;  col2;col3;col4;<br>
-				col1;  col2;col3;col4;;
+Align removing extra spaces
 
-(OMG!)
+![spacesAline](./assets/spacesAline.gif)
 
+Aline auto updates the alignment when text is changed
 
-\* imagine a nice gif showing text being updated automatically here \*
+![updateAline](./assets/updateAline.gif)
 
-# Features
+## Features
 
+* Simple usage, no complex regex patterns like in [Tabular](https://github.com/godlygeek/tabular)
 * No dependencies, works with only Vimscript
 * Format using any separator
 * Auto re-format modified text
-* Python3 aligning option
+* Python 3 aligning option
 
-# Installation
+## Installation
 
-* Plug
-Add this to yout .vimrc (do not include the ellipsis)
+Add this to your [VimPlug](https://github.com/junegunn/vim-plug):
 
-				call plug#begin()
-				...
-				Plug 'vinicius-toshiyuki/aline.git'
-				...
-				call plug#end()
+```
+call plug#begin()
+...
+Plug 'vinicius-toshiyuki/aline.git'
+...
+call plug#end()
+````
 
-and exit Vim and run
+Exit Vim and run
 
-				vim +PlugInstall +qa
+```
+vim +PlugInstall +qa
+```
 
-## Documentation
+## Usage
 
-The main command is
+There is no built-in documentation inside Vim yet.
 
-				:Aline <sep> [<options>]
+The main command is `:[<range>]Aline <sep> [<options>]` with the cursor inside the block of text to be formatted.
 
-in normal mode with the cursor inside the block of text to be formatted.
+* `<range>` is the line range
+	* Using a range implies `n` in the options
+* `<sep>` is the separator
+	* Can be more than one character
+	* Spaces and `\` must be escaped
+* `<options>` can be an alignment , `c` for clearing extra white spaces, a padding added to the separator, `n` to disable update in this area.
+	* `-`, `=`, `+` : left, center and right alignment, respectively
+	* With `c` and a padding, spaces are cleared before inserting padding
+	* Options may be in any order
+	* Do not include whitespaces between options
 
-* \<sep\> is the separator (can be more than one character)
-* \<options\>  can be an alignment ('-' for left (default), '=' for center or '+' for right), 'c' for clearing extra white spaces and a number to specify padding added to the separator.
-
-The options must not contain white spaces and may be in any order.
-
-There is also
-
-				:AlineEnableUpdate
-				:AlineDisableUpdate
-
-for enabling and disabling auto update.
+There is also `:AlineEnableUpdate` and `:AlineDisableUpdate` for enabling and disabling auto update for a file.
+Auto update uses the `CursorHold` and `CursorHoldI` events to refresh, change the refresh interval with `set updatetime=300` or some other time in milliseconds (default is `4000`).
 
 ## Customization
 
 These variables can be set in your configuration file to change Aline's behavior:
  
-* g:aline#use\_python3 (default=v:false): controls whether python3 is used (does not support options for now)
-* g:aline#max\_line\_count (default=100): max text block line size to keep auto updating when modified
-* g:aline#separator\_padding (default=0): white space padding to be added to the separator
-* g:aline#default\_alignment (default=-): alignment to be used if none was provided
-* g:aline#update#hold\_time (default=500): time to not update after an update (prevents the update being counted as a modification and enter an update loop)
-* g:aline#update#update\_time (default=750): time with no new changes needed before updating
-* g:aline#update#file\_types (default=[]): list of file extensions to enable auto update automatically on entering a buffer
+* `g:aline#use_python3` (default=`v:false`): use Python 3 to align text
+* `g:aline#max_line_count` (default=`100`): max text block line size to keep auto updating when modified
+* `g:aline#separator_padding` (default=`0`): white space padding be added to the separator
+* `g:aline#default_alignment` (default=`-`): alignment used if none was provided
+* `g:aline#update#file_types` (default=`[]`): list of file extensions to enable auto update automatically on opening a file
 
 ### Performance
 
-While the processing of the text can be very quick, when using to format a block of text too long it might take a few seconds to complete due to Vim's function call inside scripts taking a lot of time (or Vim's function calls overhead, which might be solved with Vimscript9 idk).
+While processing the text can be very quick, when using to format a block of text too long it might take a few seconds for Vim to fetch the text and replace it with the new one.
+For this reason, auto update is disabled for long texts (`g:aline#max_line_count`).
 
-For this reason, auto update is disabled for long texts, but you can control this behavior (see above).
+## Author
 
-Vim throws an error when undoing changes because the use of text properties in older versions. It was fixed in a patch for v8.2, the newest version of Vim should work just fine. However, if you use Ubuntu and install Vim using apt or similar, you probably don't have the newest version and you might want to build Vim from source (it's not that difficult, look up Google).
+[Vinícius T M Sugimoto](https://github.com/vinicius-toshiyuki)
 
 # License
 

@@ -12,6 +12,9 @@ let g:aline#separator_padding = 0
 " '-': left, '+': right, '=': center
 let g:aline#default_alignment = '-'
 
+" File extensions to activate auto update formatting
+let g:aline#update#file_types = []
+
 function! s:aline(range, line1, line2, sep, ...) abort
 	" Get alignment
 	let l:align_short = (substitute(get(a:, 1, ''), '[^-=+]', '', 'g').g:aline#default_alignment)[0]
@@ -25,6 +28,10 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	let l:clear_extra = substitute(get(a:, 1, ''), '[^c]', '', 'g')[0]
 	let l:clear_extra = l:clear_extra == 'c' ? v:true : v:false
 
+	" Get no update option
+	let l:noupdate = substitute(get(a:, 1, ''), '[^n]', '', 'g')[0]
+	let l:noupdate = l:noupdate == 'n' ? v:true : v:false
+
 	" Get a regex-friendly separator
 	let l:rsep = escape(a:sep, '\^$.*~[]')
 
@@ -37,6 +44,7 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	if a:range > 0
 		let l:ls = a:line1
 		let l:le = a:line2
+		let l:noupdate = v:true
 	else
 		let l:ls = search('\(^.*'.l:rsep.'.*$\)\@<!$', 'nbW') + 1
 		let l:le = search('\(^.*'.l:rsep.'.*$\)\@<!$', 'nW') - 1
@@ -55,14 +63,18 @@ function! s:aline(range, line1, line2, sep, ...) abort
 
 	" Add property
 	let l:prop = aline#properties#get(line('.'))
-	let l:id = len(l:prop) > 0 ? l:prop[0].id : len(g:aline#properties)
-	call aline#properties#add(l:id, l:ls, l:le, a:sep, {'align': l:align_short})
+	let l:id = len(l:prop) > 0 ? l:prop[0] : len(g:aline#properties)
+	call aline#properties#add(l:id, l:ls, l:le, a:sep, #{align: l:align_short, noupdate: l:noupdate})
 
 	" Restore original view
 	call winrestview(l:view)
 	return 1
 endfunction 
 command! -range -bar -nargs=+ Aline :call <SID>aline(<range>, <line1>, <line2>, <f-args>)
+command! -bar -nargs=0 AlineEnableUpdate :call aline#update#enable()
+command! -bar -nargs=0 AlineDisableUpdate :call aline#update#disable()
+
+call aline#update#setup()
 
 function s:vim(ls, le, sep, options) abort
 	" Get a regex-friendly separator
