@@ -27,7 +27,7 @@ function! aline#properties#add(id, start, end, sep, options) abort
 		call aline#properties#remove(a:id)
 	endif
 	let l:type = a:end - a:start > g:aline#max_line_count ? g:aline#long_text : g:aline#text
-	let g:aline#properties[a:id] = extend(#{start: a:start, end: a:end, sep: a:sep, type: l:type, bufnr: buffer}, a:options)
+	let g:aline#properties[a:id] = extend({'start': a:start, 'end': a:end, 'sep': a:sep, 'type': l:type, 'bufnr': buffer}, a:options)
 endfunction
 
 function! aline#properties#remove(id) abort

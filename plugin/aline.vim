@@ -1,19 +1,19 @@
 " Select python3 function over vimscript only (if available)
-let g:aline#use_python3 = v:false
+let g:aline#use_python3 = get(g:, 'aline#use_python3', v:false)
 
 " Text block maximum byte length to keep updating
 " Negative values interpreted as unlimited
-let g:aline#max_line_count = 100
+let g:aline#max_line_count = get(g:, 'aline#max_line_count', 100)
 
 " Default separators padding
-let g:aline#separator_padding = 0
+let g:aline#separator_padding = get(g:, 'aline#separator_padding', 0)
 
 " Default text alignment
 " '-': left, '+': right, '=': center
-let g:aline#default_alignment = '-'
+let g:aline#default_alignment = get(g:, 'aline#default_alignment', '-')
 
 " File extensions to activate auto update formatting
-let g:aline#update#file_types = []
+let g:aline#update#file_types = get(g:, 'aline#update#file_types', [])
 
 function! s:aline(range, line1, line2, sep, ...) abort
 	" Get alignment
@@ -27,6 +27,10 @@ function! s:aline(range, line1, line2, sep, ...) abort
 	" Get clear extra spaces option
 	let l:clear_extra = substitute(get(a:, 1, ''), '[^c]', '', 'g')[0]
 	let l:clear_extra = l:clear_extra == 'c' ? v:true : v:false
+
+	" Get keep start of line spaces option
+	let l:keep_start = substitute(get(a:, 1, ''), '[^k]', '', 'g')[0]
+	let l:keep_start = l:keep_start == 'k' ? v:true : v:false
 
 	" Get no update option
 	let l:noupdate = substitute(get(a:, 1, ''), '[^n]', '', 'g')[0]
@@ -59,12 +63,13 @@ function! s:aline(range, line1, line2, sep, ...) abort
 				\ 's:python3' :
 				\ 's:vim'
 				\)
-	call l:Aline_engine(l:ls, l:le, a:sep, #{align: l:align, clear_extra: l:clear_extra, padding: l:padding})
+	" TODO: depois de alinhar colocar o cursor no lugar correto
+	call l:Aline_engine(l:ls, l:le, a:sep, {'align': l:align, 'clear_extra': l:clear_extra, 'keep_start': l:keep_start, 'padding': l:padding})
 
 	" Add property
 	let l:prop = aline#properties#get(line('.'))
 	let l:id = len(l:prop) > 0 ? l:prop[0] : len(g:aline#properties)
-	call aline#properties#add(l:id, l:ls, l:le, a:sep, #{align: l:align_short, noupdate: l:noupdate})
+	call aline#properties#add(l:id, l:ls, l:le, a:sep, {'align': l:align_short, 'noupdate': l:noupdate})
 
 	" Restore original view
 	call winrestview(l:view)
@@ -81,15 +86,20 @@ function s:vim(ls, le, sep, options) abort
 	let l:rsep = escape(a:sep, '\^$.*~[]')
 
 	" Get lines and split with the separator
-	let l:lines = map(getline(a:ls, a:le), 'split(a:options.clear_extra ? substitute(v:val, ''^\s\+\|\s*\('.l:rsep.'\)\s*\|\s\+$'', "\\1", "g") : v:val, l:rsep, 1)')
+	let l:lines = map(
+				\ getline(a:ls, a:le),
+				\		'split(a:options.clear_extra ? substitute(v:val, '''.(
+				\		a:options.keep_start ? '' : '^\s\+\|'
+				\		).'\s*\('.l:rsep.'\)\s*\|\s\+$'', "\\1", "g") : v:val, l:rsep, 1)'
+				\		)
 
 	" Get column count
-	let l:ccount = map(copy(l:lines), 'len(v:val)')->max()
+	let l:ccount = max(map(copy(l:lines), 'len(v:val)'))
 
 	" Format lines
 	for l:i in range(l:ccount)
 		" Get length of the l:i'th column
-		let l:clen = map(
+		let l:clen = max(map(
 					\ copy(l:lines),
 					\ 'len(v:val) > l:i ?
 					\ strdisplaywidth(
@@ -98,7 +108,7 @@ function s:vim(ls, le, sep, options) abort
 					\ 		"^\\s\\*\\([^\\s]*\\)\\s\\*$",
 					\ 		"\\1", ""
 					\ 	)
-					\ ) : 0')->max()
+					\ ) : 0'))
 		" Format l:i'th column of each line
 		for l:line in l:lines
 			if len(l:line) > l:i
@@ -124,7 +134,7 @@ function s:vim(ls, le, sep, options) abort
 				\ l:lines,
 				\ 'join(v:val, "'.
 				\ repeat(' ', a:options.padding).
-				\ escape(a:sep, '\').
+				\ escape(a:sep, '\"').
 				\ repeat(' ', a:options.padding).
 				\ '")'
 				\)
@@ -159,7 +169,14 @@ def align(col):
 start = datetime.datetime.now()
 
 lines = vim.current.buffer[aline_start:aline_end]
-lines = list(map(lambda l: l.split(aline_sep).strip(None if aline_opt['clear_extra'] else ''), lines))
+lines = list(map(lambda l: l.split(aline_sep), lines))
+if aline_opt['clear_extra']:
+	if not aline_opt['keep_start']:
+		# strip() over a map of lines and words
+		lines = list(map(lambda l: list(map(lambda w: w.strip(), l)), lines))
+	else:
+		lines = list(map(lambda l: [l[0].rstrip()] + list(map(lambda w: w.strip(), l[1:])), lines))
+
 max_len = len(max(lines, key=lambda k: len(k)))
 lines = list(map(lambda l: l + ([''] * (max_len - len(l))), lines))
 columns = list(zip(*lines))

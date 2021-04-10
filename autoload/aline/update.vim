@@ -21,6 +21,7 @@ function! s:updateBlock() abort
 endfunction
 
 function! aline#update#enable() abort
+	" TODO: alterar texto só se tiver uma mudança
 	augroup ALINE_UPDATE
 		exec 'au CursorHold '.expand('%:p').' call <SID>updateBlock()'
 		exec 'au CursorHoldI '.expand('%:p').' call <SID>updateBlock()'
@@ -36,6 +37,8 @@ endfunction
 
 function aline#update#setup() abort
 	for ft in g:aline#update#file_types
-		exec 'au ALINE_UPDATE FileType '.ft.' call aline#update#enable()'
+		augroup ALINE_UPDATE 
+			exec 'au FileType '.ft.' call aline#update#enable()'
+		augroup END
 	endfor
 endfunction
